@@ -2,6 +2,11 @@ from django.db import models
 
 # Create your models here.
 
+from urllib.parse import urlparse
+from django.core.files import File
+from utils.file import download, get_buffer_ext
+
+
 class Attraction(models.Model):
     #id는 TripAdvisor의 장소 id.
     id = models.IntegerField()
@@ -10,10 +15,10 @@ class Attraction(models.Model):
     # star는 트립어드바이저의 별점에 10을 곱한 수
     star = models.IntegerField()
     #cat1, 2는 TourAPI의 대분류, 중분류를 사용함.
-    cat1 = models.CharField(max_length = 100)
-    cat2 = models.CharField(max_length = 100)
+    main = models.CharField(max_length = 100)
+    middle = models.CharField(max_length = 100)
     #type은 TripAdvisor의 분류 타입을 사용함.
-    type = models.CharField(max_length = 50)
+    type = models.CharField(max_length = 100)
     #url는 
     url = models.URLField('', max_length = 400, blank = True)
     #image는 TourAPI에서 나오는 사진 or 개별적으로 구한 사진
@@ -24,6 +29,18 @@ class Attraction(models.Model):
 
     def __str__(self):
         return self.name
+
+    def set_image(self, *args, **kwargs):
+        if self.url and not self.image:
+            temp_file = download(self.url)
+            file_name = '{urlparse}.{ext}'.format(
+                urlparse = urlparse(self.url).path.split('/')[-1].split('.')[0],
+                ext = get_buffer_ext(temp_file))
+            self.image.save(file_name, File(temp_file))
+            super().save()
+        else:
+            super.save()
+
 
 class Review(models.Model):
     #여행장소 하나당 리뷰가 0개부터 2개 이상이므로,
